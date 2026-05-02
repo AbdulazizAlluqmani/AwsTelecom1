@@ -1349,9 +1349,9 @@ function generateMemo(result) {
 
   for (const cat of result.categories) {
     if (cat.only_in === 'A') {
-      lines.push(`\n■ ${cat.name}  ⚠ موجودة في ${bA} فقط`);
+      lines.push(`\n■ ${cat.name}   موجودة في ${bA} فقط`);
     } else if (cat.only_in === 'B') {
-      lines.push(`\n■ ${cat.name}  ⚠ موجودة في ${bB} فقط`);
+      lines.push(`\n■ ${cat.name}   موجودة في ${bB} فقط`);
     } else {
       lines.push(`\n■ ${cat.name}`);
     }
@@ -1362,14 +1362,14 @@ function generateMemo(result) {
     if (aToB.length) {
       lines.push(`   ▶ من ${bA} إلى ${bB}:`);
       for (const it of aToB) {
-        const suffix = it.only_in === 'A' ? `   ⚠ موجود في ${bA} فقط` : '';
+        const suffix = it.only_in === 'A' ? `    موجود في ${bA} فقط` : '';
         lines.push(`      • ${it.device_name}  ← ${it.transfer_qty} قطعة${suffix}`);
       }
     }
     if (bToA.length) {
       lines.push(`   ▶ من ${bB} إلى ${bA}:`);
       for (const it of bToA) {
-        const suffix = it.only_in === 'B' ? `   ⚠ موجود في ${bB} فقط` : '';
+        const suffix = it.only_in === 'B' ? `    موجود في ${bB} فقط` : '';
         lines.push(`      • ${it.device_name}  ← ${it.transfer_qty} قطعة${suffix}`);
       }
     }
@@ -1388,7 +1388,7 @@ function generateMemo(result) {
     const threshold = result.low_threshold;
     lines.push('');
     lines.push('═'.repeat(50));
-    lines.push(`   ⚠ أجهزة كميتها < ${threshold} في أحد الفرعين`);
+    lines.push(`    أجهزة كميتها < ${threshold} في أحد الفرعين`);
     lines.push('═'.repeat(50));
 
     // جمّع حسب الفئة
@@ -1401,8 +1401,8 @@ function generateMemo(result) {
     for (const catName in byCategory) {
       lines.push(`\n■ ${catName}`);
       for (const ls of byCategory[catName]) {
-        const aPart = `${bA}: ${ls.qty_a}${ls.qty_a < threshold ? ' ⚠' : ''}`;
-        const bPart = `${bB}: ${ls.qty_b}${ls.qty_b < threshold ? ' ⚠' : ''}`;
+        const aPart = `${bA}: ${ls.qty_a}${ls.qty_a < threshold ? ' ' : ''}`;
+        const bPart = `${bB}: ${ls.qty_b}${ls.qty_b < threshold ? ' ' : ''}`;
         lines.push(`   • ${ls.device_name}   (${aPart} | ${bPart})`);
       }
     }
