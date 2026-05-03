@@ -1341,55 +1341,75 @@ function generateMemo(result) {
   const bB = result.branch_b;
   const lines = [];
 
-  lines.push('═'.repeat(50));
-  lines.push(`   مذكّرة نقل  -  ${bA}  ↔  ${bB}`);
-  lines.push('═'.repeat(50));
-  lines.push(`الجلسة : ${result.session_name || '—'}`);
-  lines.push('─'.repeat(50));
+  // ─── رأس المذكّرة ───
+  lines.push('╗' + '═'.repeat(26) + '╔');
+  lines.push(`║   📋 مذكّرة نقل  —  ${bA}  ↔  ${bB}`);
+  lines.push('╝' + '═'.repeat(26) + '╚');
+  lines.push(`📅 الجلسة : ${result.session_name || '—'}`);
+  lines.push('');
+
+  // ─── فئات النقل ───
+  let catNum = 0;
+  let hasAnyTransfer = false;
 
   for (const cat of result.categories) {
-    if (cat.only_in === 'A') {
-      lines.push(`\n■ ${cat.name}   موجودة في ${bA} فقط`);
-    } else if (cat.only_in === 'B') {
-      lines.push(`\n■ ${cat.name}   موجودة في ${bB} فقط`);
-    } else {
-      lines.push(`\n■ ${cat.name}`);
-    }
-
     const aToB = cat.items.filter(i => i.transfer_direction === 'A←B' && i.transfer_qty > 0);
     const bToA = cat.items.filter(i => i.transfer_direction === 'B←A' && i.transfer_qty > 0);
+    if (!aToB.length && !bToA.length) continue;
+
+    hasAnyTransfer = true;
+    catNum++;
+
+    lines.push('┐' + '─'.repeat(26) + '┌');
+    if (cat.only_in === 'A') {
+      lines.push(`│  ${catNum}. ${cat.name}     موجودة في ${bA} فقط`);
+    } else if (cat.only_in === 'B') {
+      lines.push(`│  ${catNum}. ${cat.name}     موجودة في ${bB} فقط`);
+    } else {
+      lines.push(`│  ${catNum}. ${cat.name}`);
+    }
+    lines.push('┘' + '─'.repeat(26) + '└');
 
     if (aToB.length) {
-      lines.push(`   ▶ من ${bA} إلى ${bB}:`);
-      for (const it of aToB) {
-        const suffix = it.only_in === 'A' ? `    موجود في ${bA} فقط` : '';
-        lines.push(`      • ${it.device_name}  ← ${it.transfer_qty} قطعة${suffix}`);
-      }
+      lines.push(`   🔷 من ${bA}  ──◀  ${bB} :`);
+      aToB.forEach((it, i) => {
+        const suffix = it.only_in === 'A' ? `   في ${bA} فقط` : '';
+        lines.push(`      ${i + 1}) ${it.device_name}   ×${it.transfer_qty} قطعة${suffix}`);
+      });
     }
+
     if (bToA.length) {
-      lines.push(`   ▶ من ${bB} إلى ${bA}:`);
-      for (const it of bToA) {
-        const suffix = it.only_in === 'B' ? `    موجود في ${bB} فقط` : '';
-        lines.push(`      • ${it.device_name}  ← ${it.transfer_qty} قطعة${suffix}`);
-      }
+      if (aToB.length) lines.push('');
+      lines.push(`   🔶 من ${bB}  ──◀  ${bA} :`);
+      bToA.forEach((it, i) => {
+        const suffix = it.only_in === 'B' ? `   في ${bB} فقط` : '';
+        lines.push(`      ${i + 1}) ${it.device_name}   ×${it.transfer_qty} قطعة${suffix}`);
+      });
     }
-    if (!aToB.length && !bToA.length) {
-      lines.push('   ✔ متوازنة بالكامل');
-    }
+
+    lines.push('');
   }
 
-  lines.push('\n' + '─'.repeat(50));
-  lines.push(`إجمالي النقل ${bA} ← ${bB} : ${result.total_transferred_a_to_b} قطعة`);
-  lines.push(`إجمالي النقل ${bB} ← ${bA} : ${result.total_transferred_b_to_a} قطعة`);
-  lines.push('═'.repeat(50));
+  if (!hasAnyTransfer) {
+    lines.push('   ✅ جميع الفئات متوازنة — لا يوجد نقل مطلوب');
+    lines.push('');
+  }
 
-  // قسم الأجهزة الناقصة
+  // ─── الإجماليات ───
+  lines.push('╗' + '═'.repeat(26) + '╔');
+  lines.push(`║   📦 إجمالي النقل`);
+  lines.push('╝' + '═'.repeat(26) + '╚');
+  lines.push(`║   ${bA}  ──◀  ${bB}  :  ${result.total_transferred_a_to_b} قطعة`);
+  lines.push(`║   ${bB}  ──◀  ${bA}  :  ${result.total_transferred_b_to_a} قطعة`);
+  lines.push('╝' + '═'.repeat(26) + '╚');
+
+  // ─── الأجهزة الناقصة (فقط الفرع الأقل من 9) ───
   if (result.low_stock && result.low_stock.length > 0) {
     const threshold = result.low_threshold;
     lines.push('');
-    lines.push('═'.repeat(50));
-    lines.push(`    أجهزة كميتها < ${threshold} في أحد الفرعين`);
-    lines.push('═'.repeat(50));
+    lines.push('╗' + '═'.repeat(26) + '╔');
+    lines.push(`║     أجهزة كميتها أقل من ${threshold}  `);
+    lines.push('╝' + '═'.repeat(26) + '╚');
 
     // جمّع حسب الفئة
     const byCategory = {};
@@ -1398,15 +1418,19 @@ function generateMemo(result) {
       byCategory[ls.category_name].push(ls);
     }
 
+    let secNum = 0;
     for (const catName in byCategory) {
-      lines.push(`\n■ ${catName}`);
+      secNum++;
+      lines.push(`\n   ${secNum}. ${catName} :`);
       for (const ls of byCategory[catName]) {
-        const aPart = `${bA}: ${ls.qty_a}${ls.qty_a < threshold ? ' ' : ''}`;
-        const bPart = `${bB}: ${ls.qty_b}${ls.qty_b < threshold ? ' ' : ''}`;
-        lines.push(`   • ${ls.device_name}   (${aPart} | ${bPart})`);
+        // فقط اذكر الفرع الذي كميته أقل من 9
+        const parts = [];
+        if (ls.qty_a < threshold) parts.push(`${bA}: ${ls.qty_a} `);
+        if (ls.qty_b < threshold) parts.push(`${bB}: ${ls.qty_b} `);
+        lines.push(`      • ${ls.device_name}   [ ${parts.join('  |  ')} ]`);
       }
     }
-    lines.push('═'.repeat(50));
+    lines.push('\n' + '═'.repeat(50));
   }
 
   return lines.join('\n');
@@ -1583,7 +1607,7 @@ function renderResults(result) {
   const skipCount = result.skipped_a.length + result.skipped_b.length;
   const skipPart = skipCount ? `  •  تجاهلت ${skipCount} سطراً غير مفهوم` : '';
   $('summary-detail').textContent =
-    `إجمالي النقل  ▶  ${bA} ← ${bB}: ${result.total_transferred_a_to_b} قطعة   |   ${bB} ← ${bA}: ${result.total_transferred_b_to_a} قطعة${skipPart}`;
+    `إجمالي النقل  ◀  ${bA} ← ${bB}: ${result.total_transferred_a_to_b} قطعة   |   ${bB} ← ${bA}: ${result.total_transferred_b_to_a} قطعة${skipPart}`;
 
   // الفئات
   const c = $('results-container');
@@ -1612,7 +1636,7 @@ function renderLowStock(result) {
   const header = document.createElement('div');
   header.className = 'low-stock-header';
   header.innerHTML = `
-    <span>⚠ أجهزة كميتها أقل من ${threshold} في أحد الفرعين</span>
+    <span> أجهزة كميتها أقل من ${threshold} في أحد الفرعين</span>
     <span class="badge">${result.low_stock.length}</span>
   `;
   section.appendChild(header);
@@ -1639,13 +1663,19 @@ function renderLowStock(result) {
     if (bIsZero) bCls += ' is-low is-zero';
     else if (bIsLow) bCls += ' is-low';
 
+    // فقط اعرض الفرع الذي كميته أقل من الحد
+    let statsHtml = '';
+    if (aIsLow) {
+      statsHtml += `<div class="${aCls}"><span class="lbl">${escapeHTML(bA)}:</span><span class="val">${ls.qty_a}</span> </div>`;
+    }
+    if (bIsLow) {
+      statsHtml += `<div class="${bCls}"><span class="lbl">${escapeHTML(bB)}:</span><span class="val">${ls.qty_b}</span> </div>`;
+    }
+
     item.innerHTML = `
       <div class="ls-cat">📁 ${escapeHTML(ls.category_name)}</div>
       <div class="ls-name">${escapeHTML(ls.device_name)}</div>
-      <div class="ls-stats">
-        <div class="${aCls}"><span class="lbl">${escapeHTML(bA)}:</span><span class="val">${ls.qty_a}</span>${aIsLow ? ' ⚠' : ''}</div>
-        <div class="${bCls}"><span class="lbl">${escapeHTML(bB)}:</span><span class="val">${ls.qty_b}</span>${bIsLow ? ' ⚠' : ''}</div>
-      </div>
+      <div class="ls-stats">${statsHtml}</div>
     `;
     list.appendChild(item);
   }
@@ -1662,10 +1692,10 @@ function buildCategoryBlock(cat, bA, bB) {
   const head = document.createElement('div');
   if (cat.only_in === 'A') {
     head.className = 'cat-header warn';
-    head.textContent = `■ ${cat.name}    ⚠ موجودة في ${bA} فقط`;
+    head.textContent = `■ ${cat.name}     موجودة في ${bA} فقط`;
   } else if (cat.only_in === 'B') {
     head.className = 'cat-header warn';
-    head.textContent = `■ ${cat.name}    ⚠ موجودة في ${bB} فقط`;
+    head.textContent = `■ ${cat.name}     موجودة في ${bB} فقط`;
   } else {
     head.className = 'cat-header';
     head.textContent = `■ ${cat.name}`;
@@ -1691,10 +1721,10 @@ function buildCategoryBlock(cat, bA, bB) {
     let nameTxt = escapeHTML(item.device_name);
     let nameClass = 'name';
     if (item.only_in === 'A') {
-      nameTxt += `   ⚠ في ${escapeHTML(bA)} فقط`;
+      nameTxt += `    في ${escapeHTML(bA)} فقط`;
       nameClass += ' orange';
     } else if (item.only_in === 'B') {
-      nameTxt += `   ⚠ في ${escapeHTML(bB)} فقط`;
+      nameTxt += `    في ${escapeHTML(bB)} فقط`;
       nameClass += ' orange';
     }
 
@@ -1749,10 +1779,10 @@ function buildCategoryBlock(cat, bA, bB) {
     let nameTxt = escapeHTML(item.device_name);
     let nameCls = 'device-name';
     if (item.only_in === 'A') {
-      nameTxt += ` ⚠ في ${escapeHTML(bA)} فقط`;
+      nameTxt += `  في ${escapeHTML(bA)} فقط`;
       nameCls += ' warn';
     } else if (item.only_in === 'B') {
-      nameTxt += ` ⚠ في ${escapeHTML(bB)} فقط`;
+      nameTxt += `  في ${escapeHTML(bB)} فقط`;
       nameCls += ' warn';
     }
 
@@ -1884,7 +1914,9 @@ function exportCSV() {
       let warn = ls.low_in === 'BOTH' ? `نقص في كلا الفرعين` :
                  ls.low_in === 'A' ? `نقص في ${r.branch_a}` :
                  `نقص في ${r.branch_b}`;
-      const fields = ['ناقص', ls.category_name, ls.device_name, ls.qty_a, ls.qty_b, '', '', '', '', '', warn];
+      const lowQtyA = ls.qty_a < threshold ? ls.qty_a : '';
+      const lowQtyB = ls.qty_b < threshold ? ls.qty_b : '';
+      const fields = ['ناقص', ls.category_name, ls.device_name, lowQtyA, lowQtyB, '', '', '', '', '', warn];
       rows.push(fields.map(f => `"${String(f).replace(/"/g, '""')}"`).join(','));
     }
   }
@@ -2318,7 +2350,7 @@ function confirmClearAllSessions() {
   }
   showConfirm(
     'حذف جميع الجلسات',
-    `سيتم حذف <b>${_allSessionsCache.length}</b> جلسة محفوظة.<br><br>⚠ يُنصح بتصدير نسخة احتياطية أولاً.<br><br>هل أنت متأكد؟`,
+    `سيتم حذف <b>${_allSessionsCache.length}</b> جلسة محفوظة.<br><br> يُنصح بتصدير نسخة احتياطية أولاً.<br><br>هل أنت متأكد؟`,
     async () => {
       try {
         await clearAllSessionsFromDB();
